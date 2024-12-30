@@ -1,0 +1,440 @@
+#!/bin/bash
+
+#set -e
+#set -o pipefail
+
+#echo "${Bright_Blue}# © Ajay Bhatia, Jitendra Narayan
+# Cite: Bhatia et al, Automated pipeline for enrichment analysis in non-model organisms, 2024
+# Contact: ajaybhatia1997@gmail.com, jnarayan81@gmail.com${Reset}"
+
+echo -e "\nAutomated pipeline for enrichment analysis in non-model organisms!"
+cat ./ScriptBase/logo.txt
+
+# © Ajay Bhatia, Jitendra Narayan
+# Cite: Bhatia et al, Automated pipeline for enrichment analysis in non-model organisms, 2024
+# Contact: ajaybhatia1997@gmail.com, jnarayan81@gmail.com
+
+#USAGE: time $ ./getENRICH-NM.sh -c config.json -f -t -g 0.01
+
+# Define colors
+
+Red=`tput setaf 1`
+Green=`tput setaf 2`
+Yellow=`tput setaf 3`
+Blue=`tput setaf 4`
+Magenta=`tput setaf 5`
+Cyan=`tput setaf 6`
+Reset=`tput sgr0`
+
+# Define bright colors
+Bright_Blue=`tput setaf 12`
+Bright_Magenta=`tput setaf 13`
+Bright_White=`tput setaf 15`
+Bright_Cyan=`tput setaf 14`
+Bright_Yellow=`tput setaf 11`
+Gray=`tput setaf 7`
+Bright_Green=`tput setaf 10`
+
+# Function to check internet connection
+check_internet() {
+    wget -q --spider http://google.com
+    if [ $? -eq 0 ]; then
+        echo "${Bright_Blue}Internet connection is active${Reset}"
+    else
+        echo "${Red}No internet connection. Please check your connection${Reset}"
+        exit 1
+    fi
+}
+
+# Function to prompt user for confirmation
+confirm_proceed() {
+    read -p "${Bright_Cyan}Do you want to proceed with running the pipeline? (y/n): " choice
+    case "$choice" in
+        yes|Yes|YES|y|Y ) echo "${Bright_Blue}Proceeding with the pipeline...${Reset}";;
+        no|No|NO|n|N ) echo "${Yellow}Exiting the script.${Reset}"; exit 1;;
+        * ) echo "${Red}Invalid choice. Please enter yes or no.${Reset}"; confirm_proceed;;
+    esac
+}
+
+# Function to show usage
+usage() {
+    echo "${Yellow}Usage: $0 -c config.json [-f] [-v] [-a] [-i] [-j] [-k] [-l] [-m] [-n] [-o] [-p] [-g PVALUE_THRESHOLD] [-r ORGANISM]${Reset}"
+    
+    echo "...........................................................................................................  "
+    
+    echo "     Flags:
+	       
+               ${Blue}Compulsory Flag:${Reset}
+
+               -c	config.json file
+               
+
+	       ${Blue}Optional Flags:${Reset}
+
+               -f	delete previous folders of result
+               
+               -g	p-value ad p.adjust significanc threshold value
+                 	${Bright_Green}#default = 0.05${Reset}
+               
+               -r	organism for enrichment analysis (default: ko)
+
+               -i	generate heatmap of p-value significant pathways
+               
+               -j	generate heatmap of p.adjust significant pathways
+               
+               -k	generate upset plot of p-value significant pathways
+               
+               -l	generate upset plot of p.adjust significant pathways
+               
+               -m	generate treeplot of p-value significant pathways
+               
+               -n	generate treeplot of p.adjust significant pathways
+               
+               -o	generate pubMed trends plot of p-value significant pathways
+               
+               -p	generate pubMed trends plot of p.adjust significant pathways
+
+               -v	generate KEGG pathway diagrams of p-value significant pathways
+               
+               -a	generate KEGG pathwy diagrams of p.adjust significant pathways"
+  echo "...........................................................................................................  "
+    exit 1
+}
+
+# Parse options
+force=0
+pvalue=0
+padjust=0
+pvalue_threshold=0.05
+pubmed_trends_padjust=0
+pubmed_trends_pvalue=0
+heatmap_pvalue=0
+heatmap_padjust=0
+upsetplot_pvalue=0
+upsetplot_padjust=0
+treeplot_padjust=0
+treeplot_pvalue=0
+organism="ko"  # Default organism
+
+while getopts ":c:fvapoijklnmg:r:" opt; do
+    case ${opt} in
+        c )
+            config=$OPTARG
+            ;;
+        f )
+            force=1
+            ;;
+        v )
+            pvalue=1
+            ;;
+        a )
+            padjust=1
+            ;;
+        p )
+            pubmed_trends_padjust=1
+            ;;
+        o )
+            pubmed_trends_pvalue=1
+            ;;
+        i )
+            heatmap_pvalue=1
+            ;;
+        j )
+            heatmap_padjust=1
+            ;;
+        k )
+           upsetplot_pvalue=1
+           ;;
+        l )
+           upsetplot_padjust=1
+           ;;
+        n )
+           treeplot_padjust=1
+           ;;
+        m )
+           treeplot_pvalue=1
+           ;;
+        g )
+           pvalue_threshold=$OPTARG
+           ;;
+        r )
+           organism=$OPTARG
+           ;;
+        \? )
+            usage
+            ;;
+    esac
+done
+
+if [ -z "$config" ]; then
+    usage
+fi
+
+echo "${Green}--:LOCATIONS and FLAGS:--${Reset}"
+echo "${Green}CONFIG FILE                      :${Reset} ${config}"
+echo "${Green}FORCE FLAG                       :${Reset} ${force}"
+echo "${Green}p.adjust PUBMED TREND PLOT flag  :${Reset} ${pubmed_trends_padjust}"
+echo "${Green}p-value PUBMED TREND PLOT flag   :${Reset} ${pubmed_trends_pvalue}"
+echo "${Green}p-value KEGG PATHWAY             :${Reset} ${pvalue}"
+echo "${Green}p.adjust KEGG PATHWAY            :${Reset} ${padjust}"
+echo "${Green}p-value/p.adjust THRESHOLD       :${Reset} ${pvalue_threshold}"
+echo "${Green}p-value HEATMAP                  :${Reset} ${heatmap_pvalue}"
+echo "${Green}p.adjust HEATMAP                 :${Reset} ${heatmap_padjust}"
+echo "${Green}p-value UPSETPLOT                :${Reset} ${upsetplot_pvalue}"
+echo "${Green}p.adjust UPSETPLOT               :${Reset} ${upsetplot_padjust}"
+echo "${Green}p.adjust TREEPLOT                :${Reset} ${treeplot_padjust}"
+echo "${Green}p-value TREEPLOT                 :${Reset} ${treeplot_pvalue}"
+echo "${Green}ORGANISM                         :${Reset} ${organism}"
+
+# Prompt user for confirmation
+confirm_proceed
+
+# Load configuration
+CONFIG_FILE=$config
+
+# Check if configuration file exists
+if [[ ! -f $CONFIG_FILE ]]; then
+    echo "${Red}Configuration file not found: ${CONFIG_FILE}. Exiting...${Reset}"
+    exit 1
+fi
+
+INPUT_FILES=$(jq -r '.input_files' $CONFIG_FILE)
+OUTPUT_FILES=$(jq -r '.output_files' $CONFIG_FILE)
+SCRIPTS=$(jq -r '.scripts' $CONFIG_FILE)
+
+# Extract paths from configuration
+GENES_OF_INTEREST_SB=$(echo $INPUT_FILES | jq -r '.genes_of_interest_sb_2')
+BACKGROUND_GENES_SB_1=$(echo $INPUT_FILES | jq -r '.background_genes_sb_1')
+KEGG_ANNOTATIONTOGENES_SB_3=$(echo $INPUT_FILES | jq -r '.kegg_annotationTOgenes_sb_3')
+
+OUTDIR=$(echo $OUTPUT_FILES | jq -r '.outdir')
+GRAPH=$(echo $OUTPUT_FILES | jq -r '.graph')
+PATHWAY=$(echo $OUTPUT_FILES | jq -r '.pathway')
+ENRICHMENT_KEGG_RESULTS_CSV=$(echo $OUTPUT_FILES | jq -r '.enrichment_KEGG_results_csv')
+
+CLUSTERPROFILER_SCRIPT=$(echo $SCRIPTS | jq -r '.clusterProfiler_script')
+PATHVIEW_GRAPH_BASED_ON_P_ADJUST_SCRIPT=$(echo $SCRIPTS | jq -r '.pathview_graph_based_on_p_adjust')
+PATHVIEW_GRAPH_BASED_ON_PVALUE_SCRIPT=$(echo $SCRIPTS | jq -r '.pathview_graph_based_on_pvalue')
+PLOT_ENRICHMENT_GRAPHS_SCRIPT=$(echo $SCRIPTS | jq -r '.plot_enrichment_graphs')
+PUBMED_TRENDS_PLOTS_PADJUST=$(echo $SCRIPTS | jq -r '.pubMed_trends_plots_padjust')
+PUBMED_TRENDS_PLOTS_PVALUE=$(echo $SCRIPTS | jq -r '.pubMed_trends_plots_pvalue')
+TREEPLOT_PADJUST=$(echo $SCRIPTS | jq -r '.treeplot_padjust')
+TREEPLOT_PVALUE=$(echo $SCRIPTS | jq -r '.treeplot_pvalue')
+UPSET_PLOT_PVALUE=$(echo $SCRIPTS | jq -r '.upset_plot_pvalue')
+UPSET_PLOT_PADJUST=$(echo $SCRIPTS | jq -r '.upset_plot_padjust')
+HEATMAP_PLOT_PADJUST=$(echo $SCRIPTS | jq -r '.heatmap_plot_padjust')
+HEATMAP_PLOT_PVALUE=$(echo $SCRIPTS | jq -r '.heatmap_plot_pvalue')
+
+# Check if force flag is set
+if [[ $force == 1 ]]; then
+    echo "${Yellow}Force flag is set. Cleaning up previous output files and directories...${Reset}"
+    rm -rf "$OUTDIR"
+fi
+
+mkdir -p ${OUTDIR}
+GRAPH="${OUTDIR}/${GRAPH}"
+ENRICHMENT_KEGG_RESULTS_CSV="${OUTDIR}/${ENRICHMENT_KEGG_RESULTS_CSV}"
+PATHWAY="${OUTDIR}/${PATHWAY}"
+
+# Function to handle errors
+error_handler() {
+    echo "${Red}Error occurred in script at line: ${BASH_LINENO[0]}. Exiting...${Reset}"
+    exit 1
+}
+
+# Trap errors
+trap 'error_handler' ERR
+
+if [[ ! -f $GENES_OF_INTEREST_SB ]]; then
+    echo "${Red}Genes of interest file not found: ${GENES_OF_INTEREST_SB}. Exiting...${Reset}"
+    exit 1
+fi
+
+if [[ ! -f $CLUSTERPROFILER_SCRIPT ]]; then
+    echo "${Red}ClusterProfiler script not found: ${CLUSTERPROFILER_SCRIPT}. Exiting...${Reset}"
+    exit 1
+fi
+
+if [[ ! -f $PATHVIEW_GRAPH_BASED_ON_P_ADJUST_SCRIPT ]]; then
+    echo "${Red}Pathview graph based on p-adjust script not found: ${PATHVIEW_GRAPH_BASED_ON_P_ADJUST_SCRIPT}. Exiting...${Reset}"
+    exit 1
+fi
+
+if [[ ! -f $PATHVIEW_GRAPH_BASED_ON_PVALUE_SCRIPT ]]; then
+    echo "${Red}Pathview graph based on p-value script not found: ${PATHVIEW_GRAPH_BASED_ON_PVALUE_SCRIPT}. Exiting...${Reset}"
+    exit 1
+fi
+
+if [[ ! -f $PLOT_ENRICHMENT_GRAPHS_SCRIPT ]]; then
+    echo "${Red}Plot enrichment graphs script not found: ${PLOT_ENRICHMENT_GRAPHS_SCRIPT}. Exiting...${Reset}"
+    exit 1
+fi
+
+if [[ ! -f $PUBMED_TRENDS_PLOTS_PADJUST ]]; then
+    echo "${Red}pubMed trends plots padjust not found: ${PUBMED_TRENDS_PLOTS_PADJUST}. Exiting...${Reset}"
+    exit 1
+fi
+
+if [[ ! -f $PUBMED_TRENDS_PLOTS_PVALUE ]]; then
+    echo "${Red}pubMed trends plots pvalue not found: ${PUBMED_TRENDS_PLOTS_PVALUE}. Exiting...${Reset}"
+    exit 1
+fi
+
+if [[ ! -f $TREEPLOT_PADJUST ]]; then
+    echo "${Red}tree plots padjust not found: ${PLOT_ENRICHMENT_GRAPHS_SCRIPT}. Exiting...${Reset}"
+    exit 1
+fi
+
+if [[ ! -f $TREEPLOT_PVALUE ]]; then
+    echo "${Red}tree plots pvalue not found: ${TREEPLOT_PVALUE}. Exiting...${Reset}"
+    exit 1
+fi
+
+if [[ ! -f $UPSET_PLOT_PVALUE ]]; then
+    echo "${Red}upset plots pvalue not found: ${UPSET_PLOT_PVALUE}. Exiting...${Reset}"
+    exit 1
+fi
+
+if [[ ! -f $UPSET_PLOT_PADJUST ]]; then
+    echo "${Red}upset plots padjust not found: ${UPSET_PLOT_PADJUST}. Exiting...${Reset}"
+    exit 1
+fi
+
+if [[ ! -f $HEATMAP_PLOT_PADJUST ]]; then
+    echo "${Red}heatmap plots padjust not found: ${HEATMAP_PLOT_PADJUST}. Exiting...${Reset}"
+    exit 1
+fi
+
+if [[ ! -f $HEATMAP_PLOT_PVALUE ]]; then
+    echo "${Red}heatmap plots pvalue not found: ${HEATMAP_PLOT_PVALUE}. Exiting...${Reset}"
+    exit 1
+fi
+
+# Function to run R scripts and check for errors
+run_r_script() {
+    local script=$1
+    local pvalue_threshold=$2
+    local organism=$3
+    Rscript $script $pvalue_threshold $organism
+    if [[ $? -ne 0 ]]; then
+        echo "${Red}Error occurred while running script: ${script}.${Reset}"
+        echo "Possible causes:"
+        echo "${Red}1. ${pvalue_threshold} threshold does not meet p.adjust/pvalue in ${ENRICHMENT_KEGG_RESULTS_CSV}  ${Bright_Green}  you can set threshold with -g flag${Reset}"
+        echo "${Red}2. any required packages are not installed.${Reset}"
+        echo "${Yellow}Continuing to the next step...${Reset}"
+    fi
+}
+
+# Main pipeline
+
+mkdir -p $GRAPH
+
+current_time=$(date +"%Y-%m-%d %H:%M:%S")
+echo "${Bright_White}[$current_time]	Calculating Enrichment of KEGG Pathway${Reset}"
+(run_r_script $CLUSTERPROFILER_SCRIPT $pvalue_threshold $organism)
+wait
+current_time=$(date +"%Y-%m-%d %H:%M:%S")
+echo "${Bright_White}[$current_time]	Enrichment Analysis Completed${Reset}"
+
+current_time=$(date +"%Y-%m-%d %H:%M:%S")
+echo "${Bright_White}[$current_time]	Generating General Plots of Enrichment Result${Reset}"
+(run_r_script $PLOT_ENRICHMENT_GRAPHS_SCRIPT $pvalue_threshold $organism)
+wait
+current_time=$(date +"%Y-%m-%d %H:%M:%S")
+echo "${Bright_White}[$current_time]	General Plots of Enrichment Result Generated${Reset}"
+
+if [[ $pubmed_trends_padjust == 1 ]]; then
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Generating PubMed Trend Plots of p.adjust Significant Enriched Pathways${Reset}"
+    (run_r_script $PUBMED_TRENDS_PLOTS_PADJUST $pvalue_threshold $organism)
+    wait
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	PubMed Trend Plots of p.adjust Significant Enriched Pathways Generated${Reset}"
+fi
+
+if [[ $pubmed_trends_pvalue == 1 ]]; then
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Generating PubMed Trend Plots of p-value Significant Enriched Pathways${Reset}"
+    (run_r_script $PUBMED_TRENDS_PLOTS_PVALUE $pvalue_threshold $organism)
+    wait
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	PubMed Trend Plots of p-value Significant Enriched Pathways Generated${Reset}"
+fi
+
+if [[ $padjust == 1 ]]; then
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Generating p.adjust Significant Pathway Diagrams${Reset}"
+    mkdir -p $PATHWAY
+    mkdir -p $PATHWAY/p_adjust_based_pathway
+    (run_r_script $PATHVIEW_GRAPH_BASED_ON_P_ADJUST_SCRIPT $pvalue_threshold $organism)
+    wait
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	p.adjust Significant Pathway Diagrams Generated${Reset}"
+fi
+
+if [[ $pvalue == 1 ]]; then
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Generating p-value Significant Pathway Diagrams${Reset}"
+    mkdir -p $PATHWAY
+    mkdir -p $PATHWAY/p_value_based_pathway
+    (run_r_script $PATHVIEW_GRAPH_BASED_ON_PVALUE_SCRIPT $pvalue_threshold $organism)
+    wait
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	p-value Significant Pathway Diagrams Generated.${Reset}"
+fi
+
+if [[ $heatmap_pvalue == 1 ]]; then
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Generating Heatmap Plot of p-value Significant Enriched Pathways${Reset}"
+    (run_r_script $HEATMAP_PLOT_PVALUE $pvalue_threshold $organism)
+    wait
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Heatmap Plot of p-value Significant Enriched Pathways Generated${Reset}"
+fi
+
+if [[ $heatmap_padjust == 1 ]]; then
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Generating Heatmap Plot of p.adjust Significant Enriched Pathways${Reset}"
+    (run_r_script $HEATMAP_PLOT_PADJUST $pvalue_threshold $organism)
+    wait
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Heatmap Plot of p.adjust Significant Enriched Pathways Generated${Reset}"
+fi
+
+if [[ $upsetplot_pvalue == 1 ]]; then
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Generating Upset Plot of p-value Significant Enriched Pathways${Reset}"
+    (run_r_script $UPSET_PLOT_PVALUE $pvalue_threshold $organism)
+    wait
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Upset Plot of p-value Significant Enriched Pathways Generated${Reset}"
+fi
+
+if [[ $upsetplot_padjust == 1 ]]; then
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Generating Upset Plot of p.adjust Significant Enriched Pathways${Reset}"
+    (run_r_script $UPSET_PLOT_PADJUST $pvalue_threshold $organism)
+    wait
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Upset Plot of p.adjust Significant Enriched Pathways Generated${Reset}"
+fi
+
+if [[ $treeplot_padjust == 1 ]]; then
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Generating Treeplot of p.adjust Significant Enriched Pathways${Reset}"
+    (run_r_script $TREEPLOT_PADJUST $pvalue_threshold $organism)
+    wait
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Treeplot of p.adjust Significant Enriched Pathways Generated${Reset}"
+fi
+
+if [[ $treeplot_pvalue == 1 ]]; then
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Generating Treeplot of p-value Significant Enriched Pathways${Reset}"
+    (run_r_script $TREEPLOT_PVALUE $pvalue_threshold $organism)
+    wait
+    current_time=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "${Bright_White}[$current_time]	Treeplot of p-value Significant Enriched Pathways Generated.${Reset}"
+fi
+
+echo "${Yellow}Enrichment analysis completed successfully${Reset}"
