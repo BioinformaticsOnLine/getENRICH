@@ -15,7 +15,7 @@
 
 **getENRICH** - Automated pipeline for enrichment analysis in non-model organisms!
 
-**getENRICH** is designed to address the unique needs of researchers working with non-model organisms (and model organisms). The tool features a user-friendly command line interface (CLI), ensuring researchers can easily input data and interpret results. A graphical user interface (GUI) is also available at [www.getenrich/github.com](www.getenrich/github.com). **getENRICH** is compatible with a wide range of non-model organisms and integrates extensively with major biological databases to ensure comprehensive and up-to-date data analysis. A full document on **getENRICH** can be downloaded [here](https://github.com/jnarayan81/getENRICH/blob/main/getENRICH%20documentation.pdf). The results of the enrichment analysis include a CSV file and several types of plots such as:
+**getENRICH** is designed to address the unique needs of researchers working with non-model organisms (and model organisms). The tool features a user-friendly command line interface (CLI), ensuring researchers can easily input data and interpret results. A graphical user interface (GUI) is also available at [getenrich.igib.res.in](https://getenrich.igib.res.in/). **getENRICH** is compatible with a wide range of non-model organisms and integrates extensively with major biological databases to ensure comprehensive and up-to-date data analysis. A full document on **getENRICH** can be downloaded [here](https://github.com/jnarayan81/getENRICH/blob/main/getENRICH%20documentation.pdf). The results of the enrichment analysis include a CSV file and several types of plots such as:
 
 - Bar Plots
 - BarPlot_qScore
@@ -65,6 +65,8 @@ git clone https://github.com/jnarayan81/getENRICH.git
 - `pathview` 1.44.0
 - `plotly` 4.10.4
 - `cowplot` 1.1.3
+- `ComplexHeatmap` 2.20.0
+- `circlize` 0.4.16
 
 ## Usage
 You can check for the format of input files and setting config file in the documentation.
@@ -82,7 +84,7 @@ This flag specifies the configuration file that contains the necessary parameter
 ### Optional Flags
 
 ```bash
-./getENRICH -c config.json -f -i -j -k -l -m -n -o -p -v -a -g 0.05
+./getENRICH -c config.json -f -i -j -k -l -m -n -o -p -v -a -r -g 0.05
 ```
 
 #### `-f` (delete previous folders of result)
@@ -205,6 +207,28 @@ Similar to `-v`, this flag generates KEGG pathway diagrams but for pathways sign
 
 ```bash
 ./getENRICH -c config.json -a
+```
+
+
+#### '-r' (specify KEGG organism code)
+
+
+Similar to `-v`, this flag generates KEGG pathway diagrams but for pathways significant based on the adjusted p-value.
+
+**Usage Example:**
+
+# Using human (hsa) as organism code
+```bash
+./getENRICH -c config.json -r hsa
+```
+
+# Using mouse (mmu) as organism code
+```bash
+./getENRICH -c config.json -r mmu
+```
+# Using default KEGG Orthology (requires KEGG annotation file)
+```bash
+./getENRICH -c config.json -r ko
 ```
 
 ## Flowchart
