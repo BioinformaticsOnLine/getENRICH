@@ -242,4 +242,7 @@ Similar to `-v`, this flag generates KEGG pathway diagrams but for pathways sign
 
 ## Citation
 
+Ajay Bhatia, Pranjal Pruthi, Isha Chakraborty, Nityendra Shukla, Jitendra Narayan, getENRICH: a tool for the gene and pathway enrichment analysis of non-model organisms, Bioinformatics Advances, Volume 5, Issue 1, 2025, vbaf023, https://doi.org/10.1093/bioadv/vbaf023
+
+
 ## Contributing and Feedback
