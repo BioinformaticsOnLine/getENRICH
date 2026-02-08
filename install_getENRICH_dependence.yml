@@ -1,4 +1,4 @@
-name: sybr
+name: getenrich
 channels:
   - conda-forge
   - bioconda
