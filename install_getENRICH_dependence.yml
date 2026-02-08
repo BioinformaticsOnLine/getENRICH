@@ -1,0 +1,29 @@
+name: sybr
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  # R base - pinned to stable version
+  - r-base=4.4.*
+  
+  # CRAN R packages (via conda-forge)
+  - r-jsonlite
+  - r-dplyr
+  - r-tidyverse
+  - r-ggplot2
+  - r-ontologyindex
+  - r-plotly
+  - r-upsetr
+  - r-visnetwork
+  - r-circlize
+  
+  # CRAN R packages (via bioconda)
+  - r-pheatmap
+  
+  # Bioconductor packages (via bioconda)
+  - bioconductor-clusterprofiler
+  - bioconductor-enrichplot
+  - bioconductor-complexheatmap
+  - bioconductor-pathview
+ 
